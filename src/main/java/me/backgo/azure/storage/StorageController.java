@@ -5,9 +5,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.nio.file.FileAlreadyExistsException;
 import java.util.List;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import lombok.extern.slf4j.Slf4j;
 import me.backgo.azure.component.FileManager;
+import me.backgo.azure.util.CommonUtil;
 
 @Slf4j
 @RestController
@@ -38,17 +41,18 @@ public class StorageController {
     }
 
     @GetMapping(value = "/download")
-    public void downloadFile(HttpServletResponse response, @RequestParam(value = "fileName") String fileName) {
+    public void downloadFile(HttpServletRequest request,HttpServletResponse response, @RequestParam(value = "fileName") String fileName) {
         OutputStream os;
 
         try {
             os = response.getOutputStream();
 
             int dataSize = fileManager.download(os, fileName);
-
+            String dispostion = CommonUtil.getDisposition(fileName, CommonUtil.getBrowser(request));
             String mimeType = URLConnection.guessContentTypeFromName(fileName);
+            
             response.setContentType(mimeType);
-            response.setHeader("Content-Disposition", String.format("attachment; filename=\"" + fileName + "\""));
+            response.setHeader("Content-Disposition", dispostion);
             response.setHeader("Content-Transfer-Encoding", "binary");
             response.setContentLength(dataSize);
 
@@ -58,7 +62,9 @@ public class StorageController {
             log.error("Error occured encoding the file name.");
         } catch (IOException e) {
             log.error("Error occured downloading the file.");
-        }
+        } catch (Exception e) {
+			log.error("Error occured encoding the file name.");
+		}
     }
 
     @PostMapping(value = "/delete")
